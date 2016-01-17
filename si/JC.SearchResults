@@ -1,0 +1,5 @@
+---- 64 Matches (4 in 0 files) ----
+Uart.c (uart)://一帧长度64bytes
+Uart.c (uart):#define FRAME_BUF_LEN 64
+Uart.c (uart):				if(len < FRAME_DATA_LEN)	//暂定，数据域长度为64bytes
+Uart.c (uart):					//文件长度正好是64bytes的整数倍，再多发一空帧

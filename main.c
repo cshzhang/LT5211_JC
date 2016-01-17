@@ -27,6 +27,7 @@
 #include <config.h>
 #include <v2.h>
 #include <can.h>
+#include <uart.h>
 
 
 #define BACKLOG 10
@@ -77,6 +78,8 @@ void * CanMsgListener(void *arg)
 	char dataInFrame[BUF_SIZE] = {0};
 	int len, dataLen, v2_framelength;
 	int num_FJ = 0, num_SH = 0, num_FXP = 0;
+	int ret;
+	char nodeId[64];
 
 	//4帧
 	char FJ_data[8 * 4] = {0};
@@ -105,6 +108,12 @@ void * CanMsgListener(void *arg)
 
 		DBG_PRINTF("data from can-bus: %s", buf);
 
+		//写入文件(flash)
+		getIdFrombuf(buf, nodeId);
+		if(ret = canFrame2file(buf, nodeId) < 0)
+		{
+			perror("write2file");
+		}
 		
 		//器材名称 		器材类型		帧数
 		//-------------------------------------------------
@@ -170,24 +179,8 @@ void * CanMsgListener(void *arg)
 			memset(FXP_data, 0xff, 8*12);
 		}
 
-		/*
-		lock();
-		for(i = 1; i < FD_SETCOUNT; i++)
-		{
-			if(tMultiIOInfo.iSocketFds[i] != 0)
-			{
-				DBG_PRINTF("send frame to client, client-fd: %d\n", tMultiIOInfo.iSocketFds[i]);
-				if(send(tMultiIOInfo.iSocketFds[i], buf, len, 0) <= 0){
-					perror("send");
-					removeSocketFdByIndex(i);
-				}
-			}
-		}
-		unlock();
-		*/
 	}
 }
-
 
 int main(int argc, char **argv)
 {
@@ -211,12 +204,15 @@ int main(int argc, char **argv)
 	int socket_can;
 	struct sockaddr_can ptSockaddr_can;
 
+	int uart_fd;
+
 	//初始化T_MultiIOInfo
 	tMultiIOInfo.count = 0;
 	memset(tMultiIOInfo.iSocketFds, 0, FD_SETCOUNT * sizeof(int));
 
 	//协议初始化
 	ProtoInit();
+	DBG_PRINTF("ProtoInit ok\n");
 	pt_ProtoOpr = GetProtoOpr("V2");
 
 	//输出话CAN, socket, bind
@@ -226,9 +222,29 @@ int main(int argc, char **argv)
 		perror("can_init");
 		return -1;
 	}
+	DBG_PRINTF("can_init ok\n");
 	//异步接收服务器数据
 	startCanMsgListener(socket_can);
+	DBG_PRINTF("startCanMsgListener ok\n");
 
+	//UART 初始化
+	if(UART_Open(&uart_fd, UART_PORT) < 0)	//打开串口
+	{
+		perror("UART_Open");
+		return -1;
+	}
+
+	if(UART_Init(uart_fd) < 0)	//9600, 8N1
+	{
+		perror("UART_Init");
+		return -1;
+	}
+	DBG_PRINTF("UART_Init ok\n");
+
+	startUARTMsgListener(uart_fd);
+	
+	DBG_PRINTF("startUARTMsgListener ok\n");
+	
 	/* 
 		socket -> bind -> listen
 	*/
@@ -247,7 +263,7 @@ int main(int argc, char **argv)
 	
 	while(running)
 	{
-		PRINT_MULTIIO(&tMultiIOInfo);
+		//PRINT_MULTIIO(&tMultiIOInfo);
 		
 		FD_ZERO(&tMultiIOInfo.tReadSocketSet1);
 		//恢复备份的fdset
@@ -310,7 +326,7 @@ int main(int argc, char **argv)
 						continue;
 					}
 					
-					//解析服务器发来的数据
+					//解析上位机发来的数据
 					int send_seq ;
 					serverframe_type = pt_ProtoOpr->GetFrameType(recvbuf, recv_len);
 					
@@ -374,7 +390,6 @@ static void startCanMsgListener(int socketFd)
 {
 	pthread_create(&thread_can, NULL, &CanMsgListener, (void *)socketFd);
 }
-
 
 static int tcp_listen(int *socketServerFd, struct sockaddr_in *pt_socketServerAddr)
 {

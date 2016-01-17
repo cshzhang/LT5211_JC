@@ -25,6 +25,7 @@ TARGET := jc
 obj-y += main.o
 obj-y += can/
 obj-y += protocol/
+obj-y += uart/
 
 all :
 	make -C ./ -f $(TOPDIR)/Makefile.build

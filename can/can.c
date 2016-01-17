@@ -13,6 +13,7 @@
 
 #include <net/if.h>
 
+#define BUF_SIZE 1024
 
 int can_init(int *socket_can, struct sockaddr_can *ptSockaddr_can)
 {
@@ -74,6 +75,55 @@ int parseCanFrame(struct can_frame *canFrame, char *buf, int buf_len)
 	return len;
 	
 }
+
+
+/* 
+		   id         dlc      data
+	buf : <0x123> [8]   11 22 33 44 55 66 00 04
+*/
+void getIdFrombuf(char *buf, char *id)
+{
+	for(; *buf != '<'; buf++);
+	buf++;
+	for(; *buf != '>'; buf++)
+	{
+		*id = *buf;
+		id++;
+	}
+	*id = '\0';
+}
+
+
+/*
+	buf : <0x123> [8]   11 22 33 44 55 66 00 04
+*/
+int canFrame2file(char *buf, char *filename)
+{
+	char absolute_path[BUF_SIZE];
+	FILE *fp;
+	/**
+	  *	"a+":  按文本文件打开，读、追加写                                                                                                         
+	  *
+	  */
+	memset(absolute_path, 0, BUF_SIZE);
+	strcat(absolute_path, SAVE_PATH);
+	strcat(absolute_path, filename);
+	//printf("filename: %s\n", absolute_path);
+	
+	if((fp = fopen(absolute_path, "a+")) == NULL)
+	{
+		perror("write2file");
+		return -1;
+	}
+
+	fputs(buf, fp);
+
+	fclose(fp);
+
+	return 0;
+}
+
+
 
 //make-data from can-frame
 /*	

@@ -10,6 +10,12 @@
 #define SERVER_PORT 9898
 
 #define CAN_DEV_NAME "can1"
+#define SAVE_PATH  "/etc/can_data/"
+
+//UART
+#define UART_PORT "/dev/ttyS1"
+
+#define CONFIG_FILE "/etc/jc.conf"
 
 #endif
 
