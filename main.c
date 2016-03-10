@@ -46,7 +46,7 @@ static int g_iAck_seq = 0;
 typedef struct MultiIOInfo {
 	fd_set tReadSocketSet0;	//备份
 	fd_set tReadSocketSet1;	
-	int count;				//记录客户端的数量
+	int count;				//记录客户端的数量数量
 	int max_fd;
 	//保存客户端的socket数组
 	//index = 0 保存的是ServerSocketFd
